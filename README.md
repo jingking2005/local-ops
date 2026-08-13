@@ -64,7 +64,7 @@
 
 | 方式 | 操作 | 适用场景 |
 | --- | --- | --- |
-| 双击应用 | 双击 `总控台.app` | 日常使用。后台运行，无 Terminal 窗口和 Dock 图标 |
+| 双击应用 | 双击 `总控台.app` | 日常使用。原生 App 常驻程序坞，无 Terminal 窗口；可把图标拖入程序坞固定 |
 | 双击脚本 | 双击 `open-console.command` 或 `start.command` | 启动并自动打开网页 |
 | 命令行 | `python3 server.py` | 调试、脚本化或远程 SSH 启动 |
 

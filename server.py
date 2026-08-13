@@ -3827,13 +3827,19 @@ def wait_for_health(port, timeout=12.0, interval=0.2):
 
 def open_console_url(port):
     """Open the local console with macOS LaunchServices."""
-    try:
-        subprocess.run(
-            ["/usr/bin/open", console_url(port)], check=True,
-            capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    return True
+    url = console_url(port)
+    commands = [
+        ["/usr/bin/open", "-a", "Google Chrome", url],
+        ["/usr/bin/open", url],
+    ]
+    for command in commands:
+        try:
+            subprocess.run(
+                command, check=True, capture_output=True, text=True)
+            return True
+        except (OSError, subprocess.CalledProcessError):
+            continue
+    return False
 
 
 def open_console_when_ready(port):
@@ -3869,7 +3875,6 @@ def find_console_instances():
         args = info.get("args") or ""
         if (pid == SELF_PID or info.get("uid") != SELF_UID
                 or "server.py" not in args
-                or "--launcher" in args
                 or "--restart-helper" in args):
             continue
         candidates.append(pid)
@@ -3908,20 +3913,22 @@ end run"""
         pass
 
 
+def _listening_console_port():
+    ports = [port for item in find_console_instances()
+             for port in item.get("ports", [])]
+    return min(ports) if ports else None
+
+
 def launcher_main():
-    """start.command 的无命令启动入口。"""
-    instances = [item for item in find_console_instances()
-                 if item.get("ports")]
-    if not instances:
+    """启动服务，或在重复双击时打开已有控制页。"""
+    port = _listening_console_port()
+    if port is None:
         try:
-            main(log_to_file=True)
+            return main(log_to_file=True)
         except Exception:
             _launcher_alert("总控台启动失败。请检查数据目录权限和 console.log。")
             raise
-        return
-    ports = [p for item in instances for p in item["ports"]]
-    open_console_when_ready(min(ports) if ports else PORT_START)
-    return
+    return open_console_when_ready(port)
 
 def schedule_console_restart(server, preferred_port):
     """启动独立 helper，响应发出后关闭当前 HTTP 服务。"""

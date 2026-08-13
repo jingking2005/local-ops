@@ -112,6 +112,9 @@ def check_required_files() -> str:
         "Makefile",
         "server.py",
         "start.command",
+        "open-console.command",
+        "native/macos/main.swift",
+        "tools/build_macos_launcher.sh",
         "tests/test_server.py",
         "docs/screenshots/ops-launchpad.jpg",
         "docs/screenshots/ops-services.jpg",
@@ -394,14 +397,29 @@ def check_javascript_bindings() -> str:
 def check_shell_and_plist() -> str:
     shell_files = (
         ROOT / "start.command",
-        ROOT / "总控台.app" / "Contents" / "MacOS" / "launcher",
+        ROOT / "open-console.command",
     )
     for path in shell_files:
         command_output(["/bin/bash", "-n", str(path)])
         require(os.access(path, os.X_OK), f"{path.relative_to(ROOT)} 没有可执行权限")
+    launcher = ROOT / "总控台.app" / "Contents" / "MacOS" / "launcher"
+    require(os.access(launcher, os.X_OK), "原生 launcher 没有可执行权限")
+    require(launcher.read_bytes()[:4] == b"\xca\xfe\xba\xbe",
+            "总控台 launcher 不是通用 Mach-O 可执行文件")
+    require((ROOT / "native" / "macos" / "main.swift").is_file(),
+            "缺少原生 launcher Swift 源码")
+    require((ROOT / "tools" / "build_macos_launcher.sh").is_file(),
+            "缺少原生 launcher 构建脚本")
     plutil = shutil.which("plutil") or "/usr/bin/plutil"
     command_output([plutil, "-lint", str(INFO_PLIST)])
-    return "2 个启动脚本 + Info.plist"
+    return "2 个 shell 入口 + 原生 Mach-O launcher + Info.plist"
+
+
+def check_native_launcher_artifact() -> str:
+    builder = ROOT / "tools" / "build_macos_launcher.sh"
+    output = command_output([str(builder), "--verify"])
+    require("验证通过" in output, "原生 launcher 验证没有返回成功标记")
+    return "Swift 源码、双架构 Mach-O、macOS 12 目标与签名一致"
 
 
 def check_dev_requirements() -> str:
@@ -612,6 +630,7 @@ def main() -> int:
         ("JavaScript 语法", check_javascript_syntax),
         ("JavaScript 模块绑定", check_javascript_bindings),
         ("启动脚本与 plist", check_shell_and_plist),
+        ("原生启动器制品", check_native_launcher_artifact),
         ("开发依赖锁定", check_dev_requirements),
         ("素材来源台账", check_asset_provenance),
         ("主题注册表", check_themes),

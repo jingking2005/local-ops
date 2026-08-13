@@ -45,6 +45,8 @@ INCLUDE = (
     *REQUIRED_LICENSES,
     "server.py",
     "start.command",
+    "open-console.command",
+    "native",
     "总控台.app",
     "static",
     "docs",
@@ -105,6 +107,8 @@ SENSITIVE_SUFFIXES = {
 SAFE_ENV_SUFFIXES = {".example", ".sample", ".template"}
 EXECUTABLE_FILES = {
     "start.command",
+    "open-console.command",
+    "tools/build_macos_launcher.sh",
     "tools/build_release.py",
     "总控台.app/Contents/MacOS/launcher",
 }

@@ -36,6 +36,9 @@ jobs:
       - name: Run project checks
         run: make check PYTHON=python
 
+      - name: Verify native launcher artifact
+        run: ./tools/build_macos_launcher.sh --verify
+
       - name: Build and verify release
         run: |
           make release PYTHON=python

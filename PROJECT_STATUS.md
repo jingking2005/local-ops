@@ -1,24 +1,27 @@
 # 项目状态
 
 - 项目：总控台（local-ops）
-- 当前阶段：Finder 双击启动器根因修复中
+- 当前阶段：原生 macOS 启动器待发布验收
 - 当前分支：`main`
-- 当前任务：CONSOLE-TASK-006 原生 macOS 启动器
-- 规则/版本：现有业务规则不变；启动流程设计版本 `2026-08-13-launch-flow`
+- 当前任务：CONSOLE-TASK-006 原生 macOS 启动器（待发布检查）
+- 规则/版本：现有业务规则不变；启动流程设计版本 `2026-08-14-native-macos-launcher`
 
 ## 已完成
 
 - 已确认用户 GitHub 仓库 `https://github.com/jingking2005/local-ops` 可访问。
 - 本地 `origin` 已切换到用户仓库。
 - 已建立本次改造的需求、设计、任务范围和交接记录。
+- 已将 App bundle 入口替换为 arm64 + x86_64 通用 Swift/AppKit Mach-O，并完成 ad-hoc 签名。
+- 已修复已有实例识别和浏览器打开路径，首次启动与重复双击共用 `open-console.command`。
+- Finder 真实双击已通过：最终 App 与服务启动 39 秒后 PID 不变，重复双击后仍只有一个 App、一个服务和一个 `127.0.0.1:9600` 监听。
 
 ## 进行中
 
-- 已通过 Finder 真实双击复现 shell App 被启动后约 0.1 秒退出；用户已批准改用 Swift/AppKit 原生启动器，设计与实施计划已建立。
+- 完整自动化回归已通过；待提交后在干净 Git 边界完成最终 `make release-check`。
 
 ## 下一步
 
-- 按 TDD 实现原生 AppKit launcher，构建通用 Mach-O，再用 Finder 和程序坞真实复验。
+- 提交实现、执行干净工作区发布检查、同步最终验收状态并推送远程 `main`。
 
 ## 阻塞项
 
@@ -26,6 +29,11 @@
 - 未签名 App 的 Gatekeeper 首次授权仍是 macOS 系统行为，不在源码可控范围内。
 
 ## 变更日志
+
+2026-08-14 07:29 +0800 | Codex
+- 修改：将 `总控台.app` 改为单实例 Swift/AppKit 原生启动器，禁用无窗口 App 自动终止；修复监听实例复用与 Chrome 优先打开，并补齐通用二进制构建、发布清单和合同测试。
+- 验证：最终二进制经 Finder 实际双击后 App PID `32277`、服务 PID `32280` 在 39 秒后保持不变；重复双击仍为单实例、单监听；失败入口测试确认日志权限 0600；170 个 Python 测试、7 个 JavaScript 测试和 14 项项目检查通过；独立代码复审无剩余 Critical/Important。
+- 下一步：提交后重跑干净工作区发布检查，再推送远程 `main`。
 
 2026-08-13 09:20 +0800 | Codex
 - 修改：切换本地 GitHub origin 到 `jingking2005/local-ops`，建立 `codex/local-ops-launch-flow` 分支，写入本次改造事实源。

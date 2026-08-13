@@ -178,6 +178,33 @@ class ProjectReleaseManifestTests(unittest.TestCase):
         self.assertIn("docs/screenshots/ops-launchpad.jpg", names)
         self.assertIn("docs/screenshots/ops-services.jpg", names)
 
+    def test_native_launcher_source_and_builder_are_in_payload(self):
+        names = {
+            path.relative_to(release.ROOT).as_posix()
+            for path in release.iter_release_files()
+        }
+        self.assertIn("native/macos/main.swift", names)
+        self.assertIn("tools/build_macos_launcher.sh", names)
+        self.assertIn("open-console.command", names)
+        self.assertEqual(
+            release.archive_mode(Path("tools/build_macos_launcher.sh")),
+            0o755,
+        )
+        builder = (release.ROOT / "tools/build_macos_launcher.sh").read_text(
+            encoding="utf-8"
+        )
+        checker = (release.ROOT / "tools/check_project.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("--verify", builder)
+        self.assertIn("SOURCE_SHA256", builder)
+        self.assertIn("LOCAL_OPS_SOURCE_SHA256", builder)
+        self.assertIn("/usr/bin/strings", builder)
+        self.assertIn("lipo -thin", builder)
+        self.assertNotIn("/usr/bin/cmp", builder)
+        self.assertIn("check_native_launcher_artifact", checker)
+        self.assertIn('[str(builder), "--verify"]', checker)
+
     def test_required_third_party_licenses_are_in_payload(self):
         names = {
             path.relative_to(release.ROOT).as_posix()

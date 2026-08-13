@@ -1,5 +1,6 @@
 from html.parser import HTMLParser
 from pathlib import Path
+import plistlib
 import re
 import unittest
 
@@ -116,13 +117,29 @@ class FrontendAccessibilityContractTests(unittest.TestCase):
     def test_mac_launchers_share_the_project_entrypoint(self):
         entrypoint = ROOT / "open-console.command"
         start = (ROOT / "start.command").read_text(encoding="utf-8")
-        app_launcher = (ROOT / "总控台.app/Contents/MacOS/launcher").read_text(
-            encoding="utf-8"
-        )
+        native_source = ROOT / "native/macos/main.swift"
+        build_script = ROOT / "tools/build_macos_launcher.sh"
+        app_launcher = ROOT / "总控台.app/Contents/MacOS/launcher"
 
         self.assertTrue(entrypoint.is_file())
         self.assertIn("open-console.command", start)
-        self.assertIn("open-console.command", app_launcher)
+        self.assertTrue(native_source.is_file())
+        self.assertTrue(build_script.is_file())
+        self.assertEqual(app_launcher.read_bytes()[:4], b"\xca\xfe\xba\xbe")
+        source = native_source.read_text(encoding="utf-8")
+        self.assertIn("FileHandle(forWritingTo:", source)
+        self.assertIn("terminationStatus", source)
+        self.assertIn("terminationStatus != 0", source)
+        self.assertIn("console.log", source)
+
+    def test_mac_app_is_a_visible_single_instance_for_dock_reopen(self):
+        with (ROOT / "总控台.app/Contents/Info.plist").open("rb") as handle:
+            info = plistlib.load(handle)
+
+        self.assertTrue(info.get("LSMultipleInstancesProhibited"))
+        self.assertFalse(info.get("LSUIElement", False))
+        self.assertFalse(info.get("NSSupportsAutomaticTermination", True))
+        self.assertFalse(info.get("NSSupportsSuddenTermination", True))
 
 
 class ExistingFrontendContractTests(unittest.TestCase):

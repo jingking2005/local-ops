@@ -1,8 +1,8 @@
 # 总控台改造 Tasks
 
 - 对应需求版本：2026-08-13-launch-flow
-- 对应设计版本：2026-08-13-launch-flow
-- 最后更新：2026-08-13
+- 对应设计版本：2026-08-14-native-macos-launcher
+- 最后更新：2026-08-14
 
 ## 1. 状态说明
 
@@ -83,6 +83,6 @@
 - 对应需求：CONSOLE-REQ-001
 - 对应设计：CONSOLE-DES-005、`docs/superpowers/specs/2026-08-14-native-macos-launcher-design.md`
 - 依赖：CONSOLE-TASK-005
-- 文件范围：`native/macos/main.swift`、`tools/build_macos_launcher.sh`、`server.py`、`总控台.app/Contents/`、`tests/test_server.py`、`tests/test_frontend.py`、`tools/check_project.py`、`spec/design.md`、`spec/tasks.md`、`PROJECT_STATUS.md`、`docs/agent-handoffs/`
+- 文件范围：`native/macos/main.swift`、`tools/build_macos_launcher.sh`、`server.py`、`总控台.app/Contents/`、`tests/test_server.py`、`tests/test_frontend.py`、`tests/test_release.py`、`tools/check_project.py`、`tools/build_release.py`、`.github/workflows/ci.yml`、`README.md`、`AGENTS.md`、SPEC/状态/交接文件
 - 禁改范围：业务功能、用户 Library 运行数据、端口安全边界
-- 验收条件：先以失败测试复现；Finder 真实双击可启动并打开控制页；重复双击或程序坞点击不启动第二个服务；原生 App 进程保持运行；完整测试和发布检查通过。
+- 验收条件：先以失败测试复现；Finder 真实双击可启动并打开控制页；首次启动 30 秒后 App 与服务 PID 不变；重复双击或程序坞点击不启动第二个服务；原生 App 进程保持运行；完整测试和发布检查通过。

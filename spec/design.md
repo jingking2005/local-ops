@@ -1,15 +1,15 @@
 # 总控台改造 Design
 
-- 版本：2026-08-13-launch-flow
-- 状态：已验收
+- 版本：2026-08-14-native-macos-launcher
+- 状态：原生启动器已实现待发布验收
 - 对应需求：CONSOLE-REQ-001, CONSOLE-REQ-002
-- 最后更新：2026-08-13
+- 最后更新：2026-08-14
 
 ## 1. 设计目标与约束
 
 目标是让 Finder 双击 `.app` 产生确定的“启动/复用服务 → 健康确认 → 打开 Web”流程。保持零第三方运行时依赖、只绑定回环地址、完整项目目录运行和现有配置/日志位置。
 
-## 2. 当前实现（As-Is）
+## 2. 历史实现（改造前）
 
 - `总控台.app/Contents/MacOS/launcher` 直接执行 `server.py --launcher`。
 - `server.py` 已通过 `open` 命令等待健康接口后打开浏览器；旧的已有实例路径曾通过隐藏的 AppleScript 对话框等待选择，导致 Finder 双击看起来无反应。
@@ -32,15 +32,15 @@
 
 | 路径/模块 | 职责 | 状态 |
 | --- | --- | --- |
-| `server.py` | 服务、健康接口、实例识别、启动器可调用函数 | 已实现/目标小幅扩展 |
-| `open-console.command` | Finder/终端统一入口 | 目标新增 |
-| `start.command` | 调试入口，转发到统一启动逻辑 | 目标修改 |
-| `native/macos/main.swift` | AppKit 生命周期、程序坞 reopen 和子进程管理 | 目标新增 |
-| `tools/build_macos_launcher.sh` | 通用 Mach-O 构建与 ad-hoc 签名 | 目标新增 |
-| `总控台.app/Contents/MacOS/launcher` | 原生 Mach-O App 启动器 | 目标替换 |
-| `static/index.html` | 页面 GitHub 链接 | 目标修改 |
-| `tests/test_server.py` | 启动器行为测试 | 目标扩展 |
-| `tests/test_frontend.py` | 前端合同检查 | 已实现/目标复用 |
+| `server.py` | 服务、健康接口、实例识别、启动器可调用函数 | 已实现 |
+| `open-console.command` | Finder/终端统一入口 | 已实现 |
+| `start.command` | 调试入口，转发到统一启动逻辑 | 已实现 |
+| `native/macos/main.swift` | AppKit 生命周期、程序坞 reopen 和子进程管理 | 已实现 |
+| `tools/build_macos_launcher.sh` | 通用 Mach-O 构建、ad-hoc 签名与制品一致性验证 | 已实现 |
+| `总控台.app/Contents/MacOS/launcher` | 原生 Mach-O App 启动器 | 已实现 |
+| `static/index.html` | 页面 GitHub 链接 | 已实现 |
+| `tests/test_server.py` | 启动器行为测试 | 已实现 |
+| `tests/test_frontend.py` | 前端与原生启动合同检查 | 已实现 |
 
 ## 5. 关键流程
 
@@ -50,7 +50,7 @@
 2. AppKit 进程解析项目根目录并调用 `open-console.command`。
 3. Python launcher 检查同目录已有且正在监听的总控台实例；有则直接取其监听端口，无则启动 `server.py` 服务。是否为服务实例以同目录监听端口为准，不能仅凭 `--launcher` 参数排除。
 4. 在端口范围内轮询 `/api/health`，成功后优先使用 Chrome 打开首页，失败再使用系统默认浏览器。
-5. AppKit 进程保持运行；脚本服务进程作为其子进程持续运行。失败则写日志并显示原生或现有错误提示。
+5. AppKit 进程禁用 macOS 自动终止和突然终止，并保持运行；脚本服务进程作为其子进程持续运行。失败则写日志并显示原生或现有错误提示。
 
 ### 流程 B：重复双击
 
@@ -77,6 +77,7 @@
 
 - 端口未就绪：按短间隔重试至明确超时。
 - 服务进程提前退出：读取并保留日志末尾，弹出包含日志路径的提示。
+- 原生入口前置检查非零退出：捕获标准错误，追加到 `~/Library/Logs/总控台/console.log` 并显示原生警告框。
 - 已有实例端口无法健康：不启动第二个副本，提示用户查看日志。
 - 浏览器打开失败：服务仍保持运行，并提示用户可手动访问实际 URL。
 
@@ -86,6 +87,7 @@
 - 合同测试：检查 App launcher、`start.command`、GitHub 链接和权限位。
 - 集成 smoke test：启动真实服务，访问 `/api/health` 和首页，再清理进程。
 - 发布检查：`make check`、`make test`、`make release-check`（若发布工具环境允许）。
+- 原生制品检查：构建时嵌入 Swift 源码 SHA-256；临时重建确认可构建，并验证仓库 launcher 内源码哈希、双架构、macOS 12 deployment target 与 ad-hoc 签名。
 
 ## 10. 技术决策
 
@@ -95,7 +97,7 @@
 | CONSOLE-DES-002 | `.app` 与 `.command` 共用启动行为 | 减少 Finder/终端路径分叉 | 维护两套脚本 | 已批准 |
 | CONSOLE-DES-003 | 本次不做 Apple 签名公证 | 用户当前目标是本机双击可用，证书不在范围 | Developer ID 发布 | 已批准 |
 | CONSOLE-DES-004 | 已有实例时直接打开，不使用交互对话框 | 后台 App 中 AppleScript 对话框可能不可见并阻塞 launcher | 保留重启/取消选择框 | 已验收 |
-| CONSOLE-DES-005 | 使用单实例 Swift/AppKit 启动器处理首次启动和程序坞 reopen | shell 可执行程序会被 Finder 很快判定退出；原生 App 生命周期可稳定承载服务并响应重复点击 | shell App、一次性 App + launchd 后台服务 | 用户已批准，进行中 |
+| CONSOLE-DES-005 | 使用禁用自动终止的单实例 Swift/AppKit 启动器处理首次启动和程序坞 reopen | shell 可执行程序会被 Finder 很快判定退出；无窗口 App 也可能被系统自动终止，需显式禁用；原生 App 生命周期可稳定承载服务并响应重复点击 | shell App、一次性 App + launchd 后台服务 | 用户已批准，进行中 |
 
 ## 11. 已知限制与候选演进
 

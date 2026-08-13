@@ -158,15 +158,31 @@ class LauncherTests(unittest.TestCase):
             "http://127.0.0.1:9600/api/health",
         )
 
-    def test_open_console_url_uses_macos_open(self):
+    def test_open_console_url_prefers_chrome(self):
         with mock.patch.object(server.subprocess, "run") as run:
             self.assertTrue(server.open_console_url(9600))
 
         run.assert_called_once_with(
-            ["/usr/bin/open", "http://127.0.0.1:9600/"],
+            ["/usr/bin/open", "-a", "Google Chrome",
+             "http://127.0.0.1:9600/"],
             check=True,
             capture_output=True,
             text=True,
+        )
+
+    def test_open_console_url_falls_back_to_default_browser(self):
+        with mock.patch.object(
+            server.subprocess,
+            "run",
+            side_effect=[server.subprocess.CalledProcessError(1, "open"),
+                         mock.DEFAULT],
+        ) as run:
+            self.assertTrue(server.open_console_url(9600))
+
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(
+            run.call_args_list[1].args[0],
+            ["/usr/bin/open", "http://127.0.0.1:9600/"],
         )
 
     def test_existing_console_opens_without_showing_a_dialog(self):
@@ -182,21 +198,29 @@ class LauncherTests(unittest.TestCase):
         wait.assert_called_once_with(9602)
         open_url.assert_called_once_with(9602)
 
-    def test_launcher_processes_are_not_reported_as_console_instances(self):
+    def test_listening_legacy_launcher_is_reported_as_console_instance(self):
         snap = {
-            71001: {"uid": server.SELF_UID, "args": "python3 server.py",
-                    "etime": 20},
             71002: {"uid": server.SELF_UID,
                     "args": "python3 server.py --launcher", "etime": 30},
         }
         with mock.patch.object(server, "ps_snapshot", return_value=snap), \
                 mock.patch.object(server, "lsof_cwds", return_value={
-                    71001: server.BASE_DIR, 71002: server.BASE_DIR}), \
+                    71002: server.BASE_DIR}), \
                 mock.patch.object(server, "scan_listeners", return_value={
-                    (71001, 9600)}):
+                    (71002, 9600)}):
             found = server.find_console_instances()
 
-        self.assertEqual([item["pid"] for item in found], [71001])
+        self.assertEqual([item["pid"] for item in found], [71002])
+        self.assertEqual(found[0]["ports"], [9600])
+
+    def test_first_launcher_runs_console_service_in_the_app_process(self):
+        with mock.patch.object(server, "find_console_instances",
+                               return_value=[]), \
+                mock.patch.object(server, "main", return_value=True) as main:
+            result = server.launcher_main()
+
+        self.assertTrue(result)
+        main.assert_called_once_with(log_to_file=True)
 
 
 class ScriptCommandTests(unittest.TestCase):
@@ -1130,8 +1154,9 @@ class ConsoleRestartTests(unittest.TestCase):
                 mock.patch.object(server, "scan_listeners", return_value={
                     (71001, 9600), (71004, 9601)}):
             found = server.find_console_instances()
-        self.assertEqual([item["pid"] for item in found], [71001])
+        self.assertEqual([item["pid"] for item in found], [71001, 71004])
         self.assertEqual(found[0]["ports"], [9600])
+        self.assertEqual(found[1]["ports"], [9601])
 
     def test_panel_restart_spawns_helper_before_shutdown(self):
         class FakeServer:
