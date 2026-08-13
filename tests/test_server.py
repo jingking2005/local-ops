@@ -127,6 +127,64 @@ class OriginAttributionTests(unittest.TestCase):
         self.assertEqual(origin, {"label": "Claude Code", "icon": "bot"})
 
 
+class LauncherTests(unittest.TestCase):
+    class _HealthResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        @staticmethod
+        def read():
+            return b'{"ok": true, "status": "ok"}'
+
+    def test_console_url_is_the_complete_local_home_url(self):
+        self.assertEqual(
+            server.console_url(9603), "http://127.0.0.1:9603/"
+        )
+
+    def test_wait_for_health_retries_until_console_is_ready(self):
+        with mock.patch.object(
+            server.urllib.request,
+            "urlopen",
+            side_effect=[OSError("not ready"), self._HealthResponse()],
+        ) as urlopen:
+            self.assertTrue(server.wait_for_health(9600, timeout=1, interval=0))
+
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(
+            urlopen.call_args_list[0].args[0],
+            "http://127.0.0.1:9600/api/health",
+        )
+
+    def test_open_console_url_uses_macos_open(self):
+        with mock.patch.object(server.subprocess, "run") as run:
+            self.assertTrue(server.open_console_url(9600))
+
+        run.assert_called_once_with(
+            ["/usr/bin/open", "http://127.0.0.1:9600/"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_existing_console_is_health_checked_before_opening(self):
+        instance = {"pid": 123, "ports": [9602]}
+        with mock.patch.object(server, "find_console_instances",
+                               return_value=[instance]), \
+                mock.patch.object(server, "_launcher_dialog",
+                                   return_value="打开控制台"), \
+                mock.patch.object(server, "wait_for_health",
+                                   return_value=True) as wait, \
+                mock.patch.object(server, "open_console_url",
+                                   return_value=True) as open_url:
+            server.launcher_main()
+
+        wait.assert_called_once_with(9602)
+        open_url.assert_called_once_with(9602)
+
+
 class ScriptCommandTests(unittest.TestCase):
     def test_script_extensions_choose_the_expected_runtime_and_quote_paths(self):
         cases = {

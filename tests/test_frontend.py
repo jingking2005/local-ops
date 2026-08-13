@@ -105,6 +105,27 @@ class FrontendStructureParser(HTMLParser):
 
 
 class FrontendAccessibilityContractTests(unittest.TestCase):
+    def test_github_link_targets_users_repository(self):
+        html = (ROOT / "static/index.html").read_text(encoding="utf-8")
+        self.assertIn(
+            'href="https://github.com/jingking2005/local-ops"',
+            html,
+        )
+        self.assertNotIn("https://github.com/laogou717/local-ops", html)
+
+    def test_mac_launchers_share_the_project_entrypoint(self):
+        entrypoint = ROOT / "open-console.command"
+        start = (ROOT / "start.command").read_text(encoding="utf-8")
+        app_launcher = (ROOT / "总控台.app/Contents/MacOS/launcher").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertTrue(entrypoint.is_file())
+        self.assertIn("open-console.command", start)
+        self.assertIn("open-console.command", app_launcher)
+
+
+class ExistingFrontendContractTests(unittest.TestCase):
     def test_monitoring_tables_have_named_aria_structure(self):
         parser = FrontendStructureParser()
         parser.feed((ROOT / "static/index.html").read_text(encoding="utf-8"))

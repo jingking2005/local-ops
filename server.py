@@ -27,7 +27,6 @@ import threading
 import time
 import urllib.parse
 import urllib.request
-import webbrowser
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -3803,11 +3802,60 @@ class Handler(BaseHTTPRequestHandler):
 
 # ---------------------------------------------------------------- 启动
 
+def console_url(port):
+    """Return the complete local URL for a console port."""
+    return "http://%s:%d/" % (HOST, int(port))
+
+
+def wait_for_health(port, timeout=12.0, interval=0.2):
+    """Wait until the local console reports a healthy API response."""
+    deadline = time.monotonic() + max(0.0, float(timeout))
+    health_url = console_url(port) + "api/health"
+    while True:
+        try:
+            with urllib.request.urlopen(health_url, timeout=1.0) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            if payload.get("ok") and payload.get("status") == "ok":
+                return True
+        except (OSError, ValueError, UnicodeError, json.JSONDecodeError):
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(max(0.0, float(interval)), remaining))
+
+
+def open_console_url(port):
+    """Open the local console with macOS LaunchServices."""
+    try:
+        subprocess.run(
+            ["/usr/bin/open", console_url(port)], check=True,
+            capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
+def open_console_when_ready(port):
+    """Open a console only after its health endpoint is ready."""
+    if not wait_for_health(port):
+        _launcher_alert(
+            "总控台服务未能在规定时间内就绪。请查看 ~/Library/Logs/总控台/console.log。")
+        return False
+    if not open_console_url(port):
+        _launcher_alert(
+            "总控台已启动，但无法自动打开浏览器。请手动访问 %s" %
+            console_url(port))
+        return False
+    return True
+
+
 def open_browser_later(port, delay=0.8):
     def _open():
         try:
-            time.sleep(delay)
-            webbrowser.open("http://%s:%d/" % (HOST, port))
+            if delay:
+                time.sleep(delay)
+            open_console_when_ready(port)
         except Exception:
             pass
     threading.Thread(target=_open, daemon=True).start()
@@ -3895,7 +3943,7 @@ def launcher_main():
     if choice == "打开控制台":
         ports = [p for item in instances for p in item["ports"]]
         port = min(ports) if ports else PORT_START
-        webbrowser.open("http://%s:%d/" % (HOST, port))
+        open_console_when_ready(port)
         return
     if choice != "重新启动":
         return
@@ -4037,7 +4085,7 @@ def main(preferred_port=None, open_browser=True, log_to_file=False):
             instances = find_console_instances()
             ports = [port for item in instances for port in item.get("ports", [])]
             if ports:
-                webbrowser.open("http://%s:%d/" % (HOST, min(ports)))
+                open_console_when_ready(min(ports))
         return False
     try:
         _run_console(preferred_port, open_browser)
