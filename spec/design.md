@@ -1,7 +1,7 @@
 # 总控台改造 Design
 
 - 版本：2026-08-13-launch-flow
-- 状态：用户已批准
+- 状态：已验收
 - 对应需求：CONSOLE-REQ-001, CONSOLE-REQ-002
 - 最后更新：2026-08-13
 
@@ -12,7 +12,7 @@
 ## 2. 当前实现（As-Is）
 
 - `总控台.app/Contents/MacOS/launcher` 直接执行 `server.py --launcher`。
-- `server.py` 的 `main()` 会异步调用 Python `webbrowser.open()`，但启动器没有独立的健康等待协议。
+- `server.py` 已通过 `open` 命令等待健康接口后打开浏览器；旧的已有实例路径曾通过隐藏的 AppleScript 对话框等待选择，导致 Finder 双击看起来无反应。
 - 已运行实例通过进程、cwd 和监听端口识别；页面 GitHub 链接仍指向原作者仓库。
 - 本地 `origin` 已切换为用户仓库，改造分支从用户仓库 `main` 创建。
 
@@ -46,14 +46,14 @@
 
 1. Finder 执行 App bundle 内 launcher。
 2. launcher 解析项目根目录并执行统一 Python launcher 模式。
-3. launcher 检查同目录已有总控台实例；有则取其监听端口，无则启动 `server.py`。
+3. launcher 检查同目录已有且正在监听的总控台实例；有则直接取其监听端口，无则启动 `server.py`。`server.py --launcher` 进程和重启 helper 不计为服务实例。
 4. 在端口范围内轮询 `/api/health`，成功后使用 `open` 打开首页。
 5. 服务继续在后台运行；失败则写日志、弹窗并以非零状态结束。
 
 ### 流程 B：重复双击
 
-1. 发现同项目实例。
-2. 不启动第二个实例。
+1. 发现同项目且正在监听的实例。
+2. 不弹出选择对话框，也不启动第二个实例。
 3. 等待已有端口健康后打开该端口首页。
 
 ## 6. 接口与平台集成
@@ -92,6 +92,7 @@
 | CONSOLE-DES-001 | 以健康接口作为浏览器打开前置条件 | 避免固定 sleep 导致空白页或竞态 | 仅 `sleep` 后 `open` | 已批准 |
 | CONSOLE-DES-002 | `.app` 与 `.command` 共用启动行为 | 减少 Finder/终端路径分叉 | 维护两套脚本 | 已批准 |
 | CONSOLE-DES-003 | 本次不做 Apple 签名公证 | 用户当前目标是本机双击可用，证书不在范围 | Developer ID 发布 | 已批准 |
+| CONSOLE-DES-004 | 已有实例时直接打开，不使用交互对话框 | 后台 App 中 AppleScript 对话框可能不可见并阻塞 launcher | 保留重启/取消选择框 | 已验收 |
 
 ## 11. 已知限制与候选演进
 

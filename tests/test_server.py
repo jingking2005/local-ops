@@ -169,12 +169,10 @@ class LauncherTests(unittest.TestCase):
             text=True,
         )
 
-    def test_existing_console_is_health_checked_before_opening(self):
+    def test_existing_console_opens_without_showing_a_dialog(self):
         instance = {"pid": 123, "ports": [9602]}
         with mock.patch.object(server, "find_console_instances",
                                return_value=[instance]), \
-                mock.patch.object(server, "_launcher_dialog",
-                                   return_value="打开控制台"), \
                 mock.patch.object(server, "wait_for_health",
                                    return_value=True) as wait, \
                 mock.patch.object(server, "open_console_url",
@@ -183,6 +181,22 @@ class LauncherTests(unittest.TestCase):
 
         wait.assert_called_once_with(9602)
         open_url.assert_called_once_with(9602)
+
+    def test_launcher_processes_are_not_reported_as_console_instances(self):
+        snap = {
+            71001: {"uid": server.SELF_UID, "args": "python3 server.py",
+                    "etime": 20},
+            71002: {"uid": server.SELF_UID,
+                    "args": "python3 server.py --launcher", "etime": 30},
+        }
+        with mock.patch.object(server, "ps_snapshot", return_value=snap), \
+                mock.patch.object(server, "lsof_cwds", return_value={
+                    71001: server.BASE_DIR, 71002: server.BASE_DIR}), \
+                mock.patch.object(server, "scan_listeners", return_value={
+                    (71001, 9600)}):
+            found = server.find_console_instances()
+
+        self.assertEqual([item["pid"] for item in found], [71001])
 
 
 class ScriptCommandTests(unittest.TestCase):
@@ -1116,9 +1130,8 @@ class ConsoleRestartTests(unittest.TestCase):
                 mock.patch.object(server, "scan_listeners", return_value={
                     (71001, 9600), (71004, 9601)}):
             found = server.find_console_instances()
-        self.assertEqual([item["pid"] for item in found], [71001, 71004])
+        self.assertEqual([item["pid"] for item in found], [71001])
         self.assertEqual(found[0]["ports"], [9600])
-        self.assertEqual(found[1]["ports"], [9601])
 
     def test_panel_restart_spawns_helper_before_shutdown(self):
         class FakeServer:

@@ -3869,6 +3869,7 @@ def find_console_instances():
         args = info.get("args") or ""
         if (pid == SELF_PID or info.get("uid") != SELF_UID
                 or "server.py" not in args
+                or "--launcher" in args
                 or "--restart-helper" in args):
             continue
         candidates.append(pid)
@@ -3896,21 +3897,6 @@ def find_console_instances():
     return sorted(result, key=lambda item: (item["ports"] or [65536], item["pid"]))
 
 
-def _launcher_dialog(message):
-    script = """on run argv
-set messageText to item 1 of argv
-display dialog messageText with title "总控台" buttons {"取消", "重新启动", "打开控制台"} default button "打开控制台" cancel button "取消" with icon note
-return button returned of result
-end run"""
-    try:
-        result = subprocess.run(
-            ["osascript", "-e", script, message], capture_output=True,
-            text=True, timeout=180)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return result.stdout.strip() if result.returncode == 0 else None
-
-
 def _launcher_alert(message):
     script = """on run argv
 display alert "总控台" message (item 1 of argv) as critical
@@ -3924,7 +3910,8 @@ end run"""
 
 def launcher_main():
     """start.command 的无命令启动入口。"""
-    instances = find_console_instances()
+    instances = [item for item in find_console_instances()
+                 if item.get("ports")]
     if not instances:
         try:
             main(log_to_file=True)
@@ -3932,45 +3919,9 @@ def launcher_main():
             _launcher_alert("总控台启动失败。请检查数据目录权限和 console.log。")
             raise
         return
-    labels = []
-    for item in instances:
-        ports = " / ".join(":%d" % p for p in item["ports"]) or "未监听"
-        labels.append("%s  ·  PID %d" % (ports, item["pid"]))
-    extra = ("\n\n检测到 %d 个同项目实例，重启时会合并为一个。" % len(instances)
-             if len(instances) > 1 else "")
-    choice = _launcher_dialog(
-        "总控台已在运行：\n" + "\n".join(labels) + extra)
-    if choice == "打开控制台":
-        ports = [p for item in instances for p in item["ports"]]
-        port = min(ports) if ports else PORT_START
-        open_console_when_ready(port)
-        return
-    if choice != "重新启动":
-        return
-
-    preferred_ports = [p for item in instances for p in item["ports"]]
-    preferred = min(preferred_ports) if preferred_ports else PORT_START
-    targets = [item["pid"] for item in instances]
-    for pid in targets:
-        if process_uid(pid) == SELF_UID:
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-    deadline = time.monotonic() + 8.0
-    while time.monotonic() < deadline and any(pid_alive(pid) for pid in targets):
-        time.sleep(0.1)
-    survivors = [pid for pid in targets if pid_alive(pid)]
-    if survivors:
-        _launcher_alert("旧总控台未能正常退出（PID %s），未强制结束。" %
-                        "、".join(str(pid) for pid in survivors))
-        return
-    try:
-        main(preferred_port=preferred, log_to_file=True)
-    except Exception:
-        _launcher_alert("总控台重启失败。请检查数据目录权限和 console.log。")
-        raise
-
+    ports = [p for item in instances for p in item["ports"]]
+    open_console_when_ready(min(ports) if ports else PORT_START)
+    return
 
 def schedule_console_restart(server, preferred_port):
     """启动独立 helper，响应发出后关闭当前 HTTP 服务。"""
