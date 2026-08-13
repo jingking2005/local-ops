@@ -15,11 +15,11 @@
 ## 2. 当前交接摘要
 
 - 当前分支：`main`
-- 工作区状态：真实 Finder 双击问题复现，修复进行中
-- 当前任务：CONSOLE-TASK-006
+- 工作区状态：原生启动器已验收，待推送验收文档提交
+- 当前任务：无
 - 下一任务：无
 - 不能触碰：用户 Library 下的运行配置、日志和图标；不得提交密钥
-- 已知问题：shell 可执行程序被 Finder 很快判定退出并回收进程链；已批准改用原生 AppKit 启动器
+- 已知问题：未签名/未公证 App 在其他 Mac 首次打开时仍受 Gatekeeper 系统授权流程约束
 
 ## 3. 任务列表
 
@@ -78,7 +78,7 @@
 
 ### CONSOLE-TASK-006 原生 macOS 启动器
 
-- 状态：进行中
+- 状态：完成
 - 所有者：Codex
 - 对应需求：CONSOLE-REQ-001
 - 对应设计：CONSOLE-DES-005、`docs/superpowers/specs/2026-08-14-native-macos-launcher-design.md`
@@ -86,3 +86,4 @@
 - 文件范围：`native/macos/main.swift`、`tools/build_macos_launcher.sh`、`server.py`、`总控台.app/Contents/`、`tests/test_server.py`、`tests/test_frontend.py`、`tests/test_release.py`、`tools/check_project.py`、`tools/build_release.py`、`.github/workflows/ci.yml`、`README.md`、`AGENTS.md`、SPEC/状态/交接文件
 - 禁改范围：业务功能、用户 Library 运行数据、端口安全边界
 - 验收条件：先以失败测试复现；Finder 真实双击可启动并打开控制页；首次启动 30 秒后 App 与服务 PID 不变；重复双击或程序坞点击不启动第二个服务；原生 App 进程保持运行；完整测试和发布检查通过。
+- 验收证据：最终 App PID `32277`/服务 PID `32280` 在 39 秒后不变，重复双击仍单实例/单监听；`make check` 14 项通过；干净工作区 `make release-check` 16 项通过；独立复审无 Critical/Important。

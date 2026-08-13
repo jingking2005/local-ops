@@ -16,3 +16,4 @@
 - Codex：完成 Swift/AppKit 原生 launcher、arm64 + x86_64 通用构建和 ad-hoc 签名；现场发现无窗口 App 约 20 秒后被系统自动终止，按 TDD 同时在 Info.plist 与运行时禁用自动/突然终止。
 - Codex：Finder 实际双击启动后 App PID `25840` 与服务 PID `25846` 在 42 秒后保持不变；重复双击仍只有一个 App、一个服务和一个 9600 监听，Chrome 控制页可见。完整 170 个 Python 测试、7 个 JavaScript 测试和 13 项项目检查通过，进入提交后发布验收。
 - Codex：根据独立审查补齐原生启动失败日志/弹窗和源码制品漂移检查；发布门会逐架构验证内嵌 Swift 源码哈希、macOS 12 目标、通用切片和签名。最终 Finder 实测 PID `32277/32280` 在 39 秒后不变，重复双击仍单实例；170 个 Python 测试、7 个 JavaScript 测试和 14 项项目检查通过，复审无剩余 Critical/Important。
+- Codex：原生实现提交 `e864998` 后，干净 Git 边界 `make release-check` 通过 16 项检查；CONSOLE-TASK-006 与 CONSOLE-DES-005 更新为已验收，待推送远程 `main`。

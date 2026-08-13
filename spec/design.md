@@ -1,7 +1,7 @@
 # 总控台改造 Design
 
 - 版本：2026-08-14-native-macos-launcher
-- 状态：原生启动器已实现待发布验收
+- 状态：已验收
 - 对应需求：CONSOLE-REQ-001, CONSOLE-REQ-002
 - 最后更新：2026-08-14
 
@@ -97,7 +97,7 @@
 | CONSOLE-DES-002 | `.app` 与 `.command` 共用启动行为 | 减少 Finder/终端路径分叉 | 维护两套脚本 | 已批准 |
 | CONSOLE-DES-003 | 本次不做 Apple 签名公证 | 用户当前目标是本机双击可用，证书不在范围 | Developer ID 发布 | 已批准 |
 | CONSOLE-DES-004 | 已有实例时直接打开，不使用交互对话框 | 后台 App 中 AppleScript 对话框可能不可见并阻塞 launcher | 保留重启/取消选择框 | 已验收 |
-| CONSOLE-DES-005 | 使用禁用自动终止的单实例 Swift/AppKit 启动器处理首次启动和程序坞 reopen | shell 可执行程序会被 Finder 很快判定退出；无窗口 App 也可能被系统自动终止，需显式禁用；原生 App 生命周期可稳定承载服务并响应重复点击 | shell App、一次性 App + launchd 后台服务 | 用户已批准，进行中 |
+| CONSOLE-DES-005 | 使用禁用自动终止的单实例 Swift/AppKit 启动器处理首次启动和程序坞 reopen | shell 可执行程序会被 Finder 很快判定退出；无窗口 App 也可能被系统自动终止，需显式禁用；原生 App 生命周期可稳定承载服务并响应重复点击 | shell App、一次性 App + launchd 后台服务 | 已验收 |
 
 ## 11. 已知限制与候选演进
 
@@ -108,3 +108,4 @@
 | 日期 | 版本 | 变更 | 关联需求/任务 |
 | --- | --- | --- | --- |
 | 2026-08-13 | 2026-08-13-launch-flow | 建立统一启动器和 GitHub 归属设计 | REQ-001/002 |
+| 2026-08-14 | 2026-08-14-native-macos-launcher | 原生 AppKit 单实例启动器、错误日志与源码制品校验验收 | REQ-001/TASK-006 |
