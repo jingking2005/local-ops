@@ -4,12 +4,12 @@
 - 当前分支：`main`
 - 基线：用户仓库 `origin/main`，验收 commit `3643e9f`；本次修复基于该 commit
 - 当前所有者：Codex
-- 当前任务：无；本次修复已完成验证并推送
-- 精确工作范围：`server.py`、`tests/test_server.py`、`spec/requirements.md`、`spec/design.md`、`spec/tasks.md`、`PROJECT_STATUS.md`、本交接单和 `AGENT_ACTIVITY_LOG.md`
+- 当前任务：CONSOLE-TASK-006 原生 macOS 启动器
+- 精确工作范围：`native/macos/main.swift`、`tools/build_macos_launcher.sh`、`server.py`、`总控台.app/Contents/`、`tests/test_server.py`、`tests/test_frontend.py`、`tools/check_project.py`、SPEC/状态/交接文件
 - 禁改范围：用户 Library 运行数据、日志、密钥、未授权业务规则
-- 已完成：根因定位；排除 `--launcher` 自身；已有监听实例直接打开且不弹隐藏对话框；聚焦启动器测试 5 项通过；完整测试 166 项通过；`make check` 通过
-- 下一步：无
-- 已知验证：真实 `open 总控台.app` 后 `GET /api/health` 返回 `ok=true`，仅保留一个 `server.py --launcher` 服务进程，未发现隐藏 `osascript display dialog`
+- 已完成：Finder 真实复现、根因确认、原生方案用户批准、设计文档和实施计划建立
+- 下一步：原生启动器 RED 测试、Swift 实现与构建、完整回归、Finder/程序坞复验、提交推送
+- 已知验证：终端脚本可用但 shell App 被 Finder 很快回收；本机 Swift 6.2.3 和 Command Line Tools 可用
 - 验收命令：`make test`、`make check`、真实 localhost health smoke test
 
 ## 交接规则

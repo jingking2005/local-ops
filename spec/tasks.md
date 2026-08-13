@@ -15,11 +15,11 @@
 ## 2. 当前交接摘要
 
 - 当前分支：`main`
-- 工作区状态：已验收，工作区干净
-- 当前任务：无；本次修复已完成验证并推送
+- 工作区状态：真实 Finder 双击问题复现，修复进行中
+- 当前任务：CONSOLE-TASK-006
 - 下一任务：无
 - 不能触碰：用户 Library 下的运行配置、日志和图标；不得提交密钥
-- 已知问题：无；旧逻辑会把隐藏对话框作为已有实例分支，并把 launcher 自身识别为实例，现已修复
+- 已知问题：shell 可执行程序被 Finder 很快判定退出并回收进程链；已批准改用原生 AppKit 启动器
 
 ## 3. 任务列表
 
@@ -75,3 +75,14 @@
 - 依赖：CONSOLE-TASK-003、CONSOLE-TASK-004
 - 文件范围：所有本次任务已修改文件
 - 验收条件：完整测试通过；提交推送到用户仓库；改造合并到远程 `main`；远程 `main` 包含本次修复 commit。
+
+### CONSOLE-TASK-006 原生 macOS 启动器
+
+- 状态：进行中
+- 所有者：Codex
+- 对应需求：CONSOLE-REQ-001
+- 对应设计：CONSOLE-DES-005、`docs/superpowers/specs/2026-08-14-native-macos-launcher-design.md`
+- 依赖：CONSOLE-TASK-005
+- 文件范围：`native/macos/main.swift`、`tools/build_macos_launcher.sh`、`server.py`、`总控台.app/Contents/`、`tests/test_server.py`、`tests/test_frontend.py`、`tools/check_project.py`、`spec/design.md`、`spec/tasks.md`、`PROJECT_STATUS.md`、`docs/agent-handoffs/`
+- 禁改范围：业务功能、用户 Library 运行数据、端口安全边界
+- 验收条件：先以失败测试复现；Finder 真实双击可启动并打开控制页；重复双击或程序坞点击不启动第二个服务；原生 App 进程保持运行；完整测试和发布检查通过。

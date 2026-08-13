@@ -26,7 +26,7 @@
 4. 健康成功后调用 macOS `open` 打开首页。
 5. 超时/异常时写入日志并通过 `osascript` 弹窗。
 
-`.app` 内 launcher 与 `start.command` 都调用该统一入口的等价 Python 启动逻辑，避免 Finder 环境和终端环境产生不同的打开行为。现有后端 `open_browser_later` 保留用于直接运行 `server.py` 的兼容场景，但 `.app` 入口不再依赖固定延迟作为成功判据。
+`.app` 改用 Swift/AppKit 原生可执行程序并作为普通程序坞应用保持运行。首次启动和程序坞 reopen 事件都调用统一的 `open-console.command`；首次脚本子进程承载长期 HTTP 服务，后续调用复用监听端口并打开控制页。现有 `start.command` 和直接运行 `server.py` 的兼容入口保持不变。
 
 ## 4. 项目与模块地图
 
@@ -35,7 +35,9 @@
 | `server.py` | 服务、健康接口、实例识别、启动器可调用函数 | 已实现/目标小幅扩展 |
 | `open-console.command` | Finder/终端统一入口 | 目标新增 |
 | `start.command` | 调试入口，转发到统一启动逻辑 | 目标修改 |
-| `总控台.app/Contents/MacOS/launcher` | 无终端后台 App 启动器 | 目标修改 |
+| `native/macos/main.swift` | AppKit 生命周期、程序坞 reopen 和子进程管理 | 目标新增 |
+| `tools/build_macos_launcher.sh` | 通用 Mach-O 构建与 ad-hoc 签名 | 目标新增 |
+| `总控台.app/Contents/MacOS/launcher` | 原生 Mach-O App 启动器 | 目标替换 |
 | `static/index.html` | 页面 GitHub 链接 | 目标修改 |
 | `tests/test_server.py` | 启动器行为测试 | 目标扩展 |
 | `tests/test_frontend.py` | 前端合同检查 | 已实现/目标复用 |
@@ -44,17 +46,17 @@
 
 ### 流程 A：双击 `.app`
 
-1. Finder 执行 App bundle 内 launcher。
-2. launcher 解析项目根目录并执行统一 Python launcher 模式。
-3. launcher 检查同目录已有且正在监听的总控台实例；有则直接取其监听端口，无则启动 `server.py`。`server.py --launcher` 进程和重启 helper 不计为服务实例。
-4. 在端口范围内轮询 `/api/health`，成功后使用 `open` 打开首页。
-5. 服务继续在后台运行；失败则写日志、弹窗并以非零状态结束。
+1. Finder 执行 App bundle 内原生 Mach-O launcher。
+2. AppKit 进程解析项目根目录并调用 `open-console.command`。
+3. Python launcher 检查同目录已有且正在监听的总控台实例；有则直接取其监听端口，无则启动 `server.py` 服务。是否为服务实例以同目录监听端口为准，不能仅凭 `--launcher` 参数排除。
+4. 在端口范围内轮询 `/api/health`，成功后优先使用 Chrome 打开首页，失败再使用系统默认浏览器。
+5. AppKit 进程保持运行；脚本服务进程作为其子进程持续运行。失败则写日志并显示原生或现有错误提示。
 
 ### 流程 B：重复双击
 
-1. 发现同项目且正在监听的实例。
-2. 不弹出选择对话框，也不启动第二个实例。
-3. 等待已有端口健康后打开该端口首页。
+1. Finder 双击已运行 App 或用户点击程序坞图标，LaunchServices 向单一 App 进程发送 reopen 事件。
+2. App 再次调用统一脚本；脚本发现同项目且正在监听的实例。
+3. 不弹出选择对话框，也不启动第二个服务；等待已有端口健康后打开该端口首页。
 
 ## 6. 接口与平台集成
 
@@ -93,6 +95,7 @@
 | CONSOLE-DES-002 | `.app` 与 `.command` 共用启动行为 | 减少 Finder/终端路径分叉 | 维护两套脚本 | 已批准 |
 | CONSOLE-DES-003 | 本次不做 Apple 签名公证 | 用户当前目标是本机双击可用，证书不在范围 | Developer ID 发布 | 已批准 |
 | CONSOLE-DES-004 | 已有实例时直接打开，不使用交互对话框 | 后台 App 中 AppleScript 对话框可能不可见并阻塞 launcher | 保留重启/取消选择框 | 已验收 |
+| CONSOLE-DES-005 | 使用单实例 Swift/AppKit 启动器处理首次启动和程序坞 reopen | shell 可执行程序会被 Finder 很快判定退出；原生 App 生命周期可稳定承载服务并响应重复点击 | shell App、一次性 App + launchd 后台服务 | 用户已批准，进行中 |
 
 ## 11. 已知限制与候选演进
 
