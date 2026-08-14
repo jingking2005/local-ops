@@ -1,12 +1,14 @@
 'use strict';
 /* ============================================================
    prefs.js — 界面质感 / 字号 / 正文字体（localStorage，可一键还原）
+   首页顶栏 type-dock 与设置中心共用同一套状态。
    ============================================================ */
 import { $ } from './core.js';
 
 const SKIN_KEY = 'console-ui-skin';
 const SCALE_KEY = 'console-font-scale';
 const FONT_KEY = 'console-font-family';
+const SCALE_STEP = 0.04;
 
 const FONT_PRESETS = {
   apple: {
@@ -72,6 +74,7 @@ export function applyUiPrefs() {
   const scale = currentScale();
   const font = currentFont();
   root.dataset.uiSkin = skin;
+  root.dataset.uiFont = font;
   root.style.setProperty('--font-scale', String(scale));
   root.style.setProperty('--font-sans', FONT_PRESETS[font].stack);
   return { skin, scale, font };
@@ -90,6 +93,10 @@ export function setScale(scale) {
   return next;
 }
 
+export function nudgeScale(delta) {
+  return setScale(currentScale() + delta);
+}
+
 export function setFont(font) {
   const next = FONT_PRESETS[font] ? font : DEFAULTS.font;
   localStorage.setItem(FONT_KEY, next);
@@ -104,31 +111,45 @@ export function resetUiPrefs() {
   applyUiPrefs();
 }
 
+function syncFontButtons(container, font) {
+  if (!container) return;
+  for (const tab of container.querySelectorAll('[data-font]')) {
+    const id = tab.dataset.font;
+    tab.classList.toggle('active', id === font);
+    if (FONT_PRESETS[id]) tab.style.fontFamily = FONT_PRESETS[id].stack;
+  }
+}
+
 export function syncPrefsControls() {
   const { skin, scale, font } = applyUiPrefs();
+  const pct = Math.round(scale * 100) + '%';
+
   const skinTabs = $('#setSkin');
   if (skinTabs) {
     for (const tab of skinTabs.querySelectorAll('.mini-tab')) {
       tab.classList.toggle('active', tab.dataset.skin === skin);
     }
   }
+
   const scaleRange = $('#setFontScale');
   const scaleVal = $('#setFontScaleVal');
   if (scaleRange) scaleRange.value = String(scale);
-  if (scaleVal) scaleVal.textContent = Math.round(scale * 100) + '%';
-  const fontTabs = $('#setFontFamily');
-  if (fontTabs) {
-    for (const tab of fontTabs.querySelectorAll('.font-chip')) {
-      tab.classList.toggle('active', tab.dataset.font === font);
-      tab.style.fontFamily = FONT_PRESETS[tab.dataset.font]
-        ? FONT_PRESETS[tab.dataset.font].stack
-        : '';
-    }
-  }
+  if (scaleVal) scaleVal.textContent = pct;
+
+  const homeScaleVal = $('#typeScaleVal');
+  if (homeScaleVal) homeScaleVal.textContent = pct;
+  const down = $('#typeScaleDown');
+  const up = $('#typeScaleUp');
+  if (down) down.disabled = scale <= 0.85;
+  if (up) up.disabled = scale >= 1.4;
+
+  syncFontButtons($('#setFontFamily'), font);
+  syncFontButtons($('#typeFontFamily'), font);
 }
 
 export function initUiPrefs() {
   applyUiPrefs();
+
   const skinTabs = $('#setSkin');
   if (skinTabs) {
     skinTabs.addEventListener('click', e => {
@@ -138,6 +159,7 @@ export function initUiPrefs() {
       syncPrefsControls();
     });
   }
+
   const scaleRange = $('#setFontScale');
   if (scaleRange) {
     const onScale = () => {
@@ -147,15 +169,34 @@ export function initUiPrefs() {
     scaleRange.addEventListener('input', onScale);
     scaleRange.addEventListener('change', onScale);
   }
-  const fontTabs = $('#setFontFamily');
-  if (fontTabs) {
-    fontTabs.addEventListener('click', e => {
-      const tab = e.target.closest('.font-chip');
+
+  const wireFontGroup = node => {
+    if (!node) return;
+    node.addEventListener('click', e => {
+      const tab = e.target.closest('[data-font]');
       if (!tab) return;
       setFont(tab.dataset.font);
       syncPrefsControls();
     });
+  };
+  wireFontGroup($('#setFontFamily'));
+  wireFontGroup($('#typeFontFamily'));
+
+  const down = $('#typeScaleDown');
+  const up = $('#typeScaleUp');
+  if (down) {
+    down.addEventListener('click', () => {
+      nudgeScale(-SCALE_STEP);
+      syncPrefsControls();
+    });
   }
+  if (up) {
+    up.addEventListener('click', () => {
+      nudgeScale(SCALE_STEP);
+      syncPrefsControls();
+    });
+  }
+
   const resetBtn = $('#setUiReset');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
@@ -163,4 +204,6 @@ export function initUiPrefs() {
       syncPrefsControls();
     });
   }
+
+  syncPrefsControls();
 }

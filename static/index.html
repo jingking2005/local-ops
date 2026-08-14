@@ -110,6 +110,21 @@
 
         <div class="topbar-right">
           <div class="side-stats mono" id="sideStats">—</div>
+          <div class="type-dock" id="typeDock" aria-label="字体与字号">
+            <div class="type-scale" role="group" aria-label="字号">
+              <button class="type-scale-btn" id="typeScaleDown" type="button" title="缩小字号" aria-label="缩小字号">A−</button>
+              <span class="type-scale-val mono" id="typeScaleVal" aria-live="polite">108%</span>
+              <button class="type-scale-btn" id="typeScaleUp" type="button" title="放大字号" aria-label="放大字号">A+</button>
+            </div>
+            <div class="type-fonts" id="typeFontFamily" role="group" aria-label="正文字体">
+              <button class="type-font-btn" type="button" data-font="apple" title="苹方 · 系统">苹方</button>
+              <button class="type-font-btn" type="button" data-font="heiti" title="黑体">黑体</button>
+              <button class="type-font-btn" type="button" data-font="kaiti" title="楷体">楷体</button>
+              <button class="type-font-btn" type="button" data-font="songti" title="宋体">宋体</button>
+              <button class="type-font-btn" type="button" data-font="fangsong" title="仿宋">仿宋</button>
+              <button class="type-font-btn" type="button" data-font="yuan" title="圆体">圆体</button>
+            </div>
+          </div>
           <div class="side-controls">
             <button class="console-control" id="restartConsoleBtn" type="button" title="重启总控台" aria-label="重启总控台">
               <span id="restartConsoleIcon" aria-hidden="true"></span>
