@@ -1,0 +1,568 @@
+/* ============================================================
+   glass.css — 毛玻璃 / 景深 / 交互动效（可开关）
+   激活条件：html[data-ui-skin="glass"]（默认）
+   经典还原：设置中心切到「经典」，或清空 localStorage console-ui-skin
+   ============================================================ */
+
+:root {
+  --font-scale: 1.08;
+  --glass-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --glass-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --glass-blur: blur(22px) saturate(140%);
+  --glass-blur-soft: blur(16px) saturate(130%);
+  --glass-topline: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.62);
+  --glass-fill: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(244, 248, 252, 0.52) 48%,
+    rgba(230, 238, 246, 0.38) 100%
+  );
+  --glass-shadow: 0 18px 48px rgba(55, 78, 110, 0.14);
+  --glass-shadow-lg: 0 28px 72px rgba(45, 70, 100, 0.18);
+  --depth-far: 0.35;
+  --depth-mid: 0.55;
+  --depth-near: 0.72;
+}
+
+[data-theme="dark"] {
+  --glass-topline: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-edge: rgba(148, 180, 220, 0.18);
+  --glass-fill: linear-gradient(
+    145deg,
+    rgba(28, 38, 54, 0.72) 0%,
+    rgba(18, 26, 38, 0.58) 50%,
+    rgba(12, 18, 28, 0.5) 100%
+  );
+  --glass-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+  --glass-shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- 字号缩放：整壳 zoom，保留现有 px 布局 ---------- */
+.shell {
+  zoom: var(--font-scale);
+}
+
+@supports not (zoom: 1) {
+  .shell {
+    transform: scale(var(--font-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--font-scale));
+    height: calc(100% / var(--font-scale));
+  }
+}
+
+/* ---------- 景深氛围层（仅毛玻璃皮肤） ---------- */
+.scene-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+html[data-ui-skin="glass"] .scene-backdrop {
+  display: block;
+}
+
+html[data-ui-skin="glass"] body {
+  background: transparent;
+}
+
+html[data-ui-skin="glass"] .scene-backdrop {
+  background:
+    radial-gradient(1100px 720px at 12% -10%, rgba(95, 150, 230, 0.28) 0%, transparent 62%),
+    radial-gradient(900px 680px at 92% 108%, rgba(120, 90, 200, 0.16) 0%, transparent 60%),
+    radial-gradient(560px 460px at 55% 40%, rgba(70, 160, 200, 0.1) 0%, transparent 65%),
+    linear-gradient(160deg, #e8eef6 0%, #f3f6fa 48%, #e6edf5 100%);
+}
+
+html[data-ui-skin="glass"][data-theme="dark"] .scene-backdrop {
+  background:
+    radial-gradient(1100px 720px at 12% -10%, rgba(47, 90, 180, 0.42) 0%, transparent 62%),
+    radial-gradient(900px 680px at 92% 108%, rgba(90, 40, 140, 0.28) 0%, transparent 60%),
+    radial-gradient(560px 460px at 55% 40%, rgba(30, 80, 140, 0.16) 0%, transparent 65%),
+    linear-gradient(160deg, #060a12 0%, #0a1018 54%, #0d1420 100%);
+}
+
+.scene-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(90, 130, 180, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 130, 180, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 88%);
+}
+
+.scene-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background:
+    repeating-linear-gradient(
+      120deg,
+      transparent 0 9px,
+      rgba(255, 255, 255, 0.14) 10px 11px,
+      transparent 12px 24px
+    ),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.55) 0 1px, transparent 1.5px);
+  mix-blend-mode: soft-light;
+  animation: hazeBreath 12s ease-in-out infinite alternate;
+}
+
+.ambient {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.7;
+  will-change: transform;
+}
+
+.ambient.a {
+  width: 240px;
+  height: 240px;
+  top: 12%;
+  left: -90px;
+  background: radial-gradient(circle, rgba(80, 160, 230, 0.34), transparent 68%);
+  animation: driftA 18s ease-in-out infinite alternate;
+}
+
+.ambient.b {
+  width: 280px;
+  height: 280px;
+  top: 48%;
+  right: -120px;
+  background: radial-gradient(circle, rgba(150, 110, 230, 0.22), transparent 70%);
+  animation: driftB 22s ease-in-out infinite alternate;
+}
+
+.ambient.c {
+  width: 200px;
+  height: 200px;
+  bottom: 8%;
+  left: 38%;
+  background: radial-gradient(circle, rgba(70, 190, 180, 0.18), transparent 68%);
+  animation: driftC 16s ease-in-out infinite alternate;
+}
+
+@keyframes hazeBreath {
+  from { opacity: 0.16; }
+  to { opacity: 0.28; }
+}
+
+@keyframes driftA {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(36px, 24px, 0); }
+}
+
+@keyframes driftB {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-28px, -20px, 0); }
+}
+
+@keyframes driftC {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(18px, -30px, 0); }
+}
+
+/* ---------- 毛玻璃皮肤：壳层透明，露出景深 ---------- */
+html[data-ui-skin="glass"] .shell {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+html[data-ui-skin="glass"] .rail {
+  background: color-mix(in srgb, var(--card) 58%, transparent);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right-color: var(--glass-edge);
+  box-shadow: var(--glass-topline), 8px 0 32px rgba(55, 78, 110, 0.06);
+}
+
+html[data-ui-skin="glass"] .topbar {
+  background: color-mix(in srgb, var(--room) 42%, transparent);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom-color: var(--glass-edge);
+  box-shadow: 0 12px 36px rgba(55, 78, 110, 0.08), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .side-nav,
+html[data-ui-skin="glass"] .console-control,
+html[data-ui-skin="glass"] .icon-btn,
+html[data-ui-skin="glass"] .cmdk-trigger,
+html[data-ui-skin="glass"] .qa-chip,
+html[data-ui-skin="glass"] .fchip,
+html[data-ui-skin="glass"] .quick-item {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-topline), 0 6px 16px rgba(55, 78, 110, 0.06);
+}
+
+html[data-ui-skin="glass"] .nav-btn,
+html[data-ui-skin="glass"] .rail-btn,
+html[data-ui-skin="glass"] .console-control,
+html[data-ui-skin="glass"] .icon-btn,
+html[data-ui-skin="glass"] .qa-chip,
+html[data-ui-skin="glass"] .fchip,
+html[data-ui-skin="glass"] .quick-item,
+html[data-ui-skin="glass"] .ibtn,
+html[data-ui-skin="glass"] .btn,
+html[data-ui-skin="glass"] .add-card {
+  transition:
+    transform 0.28s var(--glass-spring),
+    box-shadow 0.28s var(--glass-spring),
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.18s ease,
+    filter 0.22s ease;
+}
+
+html[data-ui-skin="glass"] .rail-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(55, 78, 110, 0.12), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .rail-btn.active {
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent),
+    var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .nav-btn.active {
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(55, 78, 110, 0.1);
+}
+
+html[data-ui-skin="glass"][data-theme="dark"] .nav-btn.active {
+  background: rgba(40, 54, 74, 0.86);
+}
+
+html[data-ui-skin="glass"] .console-control:hover:not(:disabled),
+html[data-ui-skin="glass"] .icon-btn:hover,
+html[data-ui-skin="glass"] .qa-chip:hover,
+html[data-ui-skin="glass"] .fchip:hover,
+html[data-ui-skin="glass"] .quick-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(55, 78, 110, 0.14), var(--glass-topline);
+}
+
+/* ---------- KPI / 卡片 / 部件：玻璃面板 ---------- */
+html[data-ui-skin="glass"] .ov,
+html[data-ui-skin="glass"] .app-card,
+html[data-ui-skin="glass"] .add-card,
+html[data-ui-skin="glass"] .widget,
+html[data-ui-skin="glass"] .tbl,
+html[data-ui-skin="glass"] .port-discovery,
+html[data-ui-skin="glass"] .empty-state {
+  position: relative;
+  overflow: hidden;
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .ov::before,
+html[data-ui-skin="glass"] .app-card::before,
+html[data-ui-skin="glass"] .widget::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.55), transparent 34%),
+    linear-gradient(118deg, transparent 0 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58%);
+  opacity: 0.55;
+  transform: translateX(-40%);
+  transition: transform 0.55s var(--glass-spring), opacity 0.28s ease;
+}
+
+html[data-ui-skin="glass"] .ov:hover::before,
+html[data-ui-skin="glass"] .app-card:hover::before,
+html[data-ui-skin="glass"] .widget:hover::before {
+  transform: translateX(30%);
+  opacity: 0.85;
+}
+
+html[data-ui-skin="glass"] .app-card,
+html[data-ui-skin="glass"] .ov,
+html[data-ui-skin="glass"] .add-card,
+html[data-ui-skin="glass"] .widget {
+  transition:
+    transform 0.32s var(--glass-spring),
+    box-shadow 0.32s var(--glass-spring),
+    border-color 0.22s ease,
+    background 0.22s ease;
+}
+
+html[data-ui-skin="glass"] .app-card:hover,
+html[data-ui-skin="glass"] .ov:hover,
+html[data-ui-skin="glass"] .add-card:hover,
+html[data-ui-skin="glass"] .widget:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--glass-edge));
+  box-shadow: var(--glass-shadow-lg), 0 0 28px color-mix(in srgb, var(--accent) 12%, transparent), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .app-card:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+html[data-ui-skin="glass"] .add-card:hover .add-plus {
+  transform: rotate(90deg) scale(1.08);
+}
+
+html[data-ui-skin="glass"] .btn:hover:not(:disabled),
+html[data-ui-skin="glass"] .ibtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(55, 78, 110, 0.14);
+}
+
+html[data-ui-skin="glass"] .btn-accent {
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 28%, transparent), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .modal,
+html[data-ui-skin="glass"] .drawer {
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow-lg), var(--glass-topline);
+}
+
+html[data-ui-skin="glass"] .modal-mask,
+html[data-ui-skin="glass"] .drawer-mask {
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  background: color-mix(in srgb, #0a1220 28%, transparent);
+}
+
+html[data-ui-skin="glass"] .modal {
+  transform: translateY(14px) scale(0.985);
+}
+
+html[data-ui-skin="glass"] .modal-mask.open .modal {
+  transform: none;
+  transition: transform 0.34s var(--glass-spring), opacity 0.24s ease;
+}
+
+html[data-ui-skin="glass"] .brand-icon {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-topline), 0 8px 18px rgba(55, 78, 110, 0.1);
+}
+
+html[data-ui-skin="glass"] .brand-text h1 {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+html[data-ui-skin="glass"] .view-head h2 {
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+html[data-ui-skin="glass"] .vh-sub {
+  font-size: 13.5px;
+}
+
+html[data-ui-skin="glass"] .rail-btn {
+  font-size: 11.5px;
+}
+
+html[data-ui-skin="glass"] .widget-head h3 {
+  font-size: 14px;
+}
+
+html[data-ui-skin="glass"] .set-name {
+  font-size: 14px;
+}
+
+html[data-ui-skin="glass"] .set-hint {
+  font-size: 12px;
+}
+
+html[data-ui-skin="glass"] .ov-label {
+  font-size: 11.5px;
+}
+
+html[data-ui-skin="glass"] .app-status,
+html[data-ui-skin="glass"] .feed-title,
+html[data-ui-skin="glass"] .tips-text {
+  font-size: 12.5px;
+}
+
+html[data-ui-skin="glass"] .app-cmd {
+  font-size: 11.5px;
+}
+
+/* ---------- 设置中心：字号 / 字体控件 ---------- */
+.set-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.set-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.set-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.set-scale-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+.set-scale-val {
+  flex: none;
+  min-width: 48px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.font-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.font-chip {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    transform 0.22s var(--glass-spring),
+    border-color 0.18s ease,
+    box-shadow 0.22s ease,
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.font-chip:hover {
+  transform: translateY(-1px);
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+
+.font-chip.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2));
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+html[data-ui-skin="glass"] .font-chip {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-topline);
+}
+
+.modal-settings {
+  width: min(520px, 100%);
+}
+
+.set-reset-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+/* ---------- 首屏 stagger（仅静态 KPI / 侧栏；卡片走 reconcile --d） ---------- */
+html[data-ui-skin="glass"] .ov,
+html[data-ui-skin="glass"] .widget {
+  animation: glassRise 0.55s var(--glass-spring) both;
+}
+
+html[data-ui-skin="glass"] .ov:nth-child(1) { animation-delay: 0.04s; }
+html[data-ui-skin="glass"] .ov:nth-child(2) { animation-delay: 0.08s; }
+html[data-ui-skin="glass"] .ov:nth-child(3) { animation-delay: 0.12s; }
+html[data-ui-skin="glass"] .ov:nth-child(4) { animation-delay: 0.16s; }
+html[data-ui-skin="glass"] .ov:nth-child(5) { animation-delay: 0.2s; }
+html[data-ui-skin="glass"] .ov:nth-child(6) { animation-delay: 0.24s; }
+
+html[data-ui-skin="glass"] .widget:nth-child(1) { animation-delay: 0.1s; }
+html[data-ui-skin="glass"] .widget:nth-child(2) { animation-delay: 0.16s; }
+html[data-ui-skin="glass"] .widget:nth-child(3) { animation-delay: 0.22s; }
+html[data-ui-skin="glass"] .widget:nth-child(4) { animation-delay: 0.28s; }
+
+html[data-ui-skin="glass"] .anim-in {
+  animation: glassRise 0.45s var(--glass-spring) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes glassRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-backdrop::after,
+  .ambient,
+  html[data-ui-skin="glass"] .ov,
+  html[data-ui-skin="glass"] .anim-in,
+  html[data-ui-skin="glass"] .widget {
+    animation: none !important;
+  }
+
+  html[data-ui-skin="glass"] .rail-btn,
+  html[data-ui-skin="glass"] .nav-btn,
+  html[data-ui-skin="glass"] .console-control,
+  html[data-ui-skin="glass"] .icon-btn,
+  html[data-ui-skin="glass"] .qa-chip,
+  html[data-ui-skin="glass"] .fchip,
+  html[data-ui-skin="glass"] .quick-item,
+  html[data-ui-skin="glass"] .ibtn,
+  html[data-ui-skin="glass"] .btn,
+  html[data-ui-skin="glass"] .add-card,
+  html[data-ui-skin="glass"] .app-card,
+  html[data-ui-skin="glass"] .ov,
+  html[data-ui-skin="glass"] .widget {
+    transition: none !important;
+  }
+
+  html[data-ui-skin="glass"] .ov::before,
+  html[data-ui-skin="glass"] .app-card::before,
+  html[data-ui-skin="glass"] .widget::before {
+    display: none;
+  }
+}

@@ -10,6 +10,7 @@ import { $, el, setText, setChildren, icon, state, fmtClock, taskExitStatus,
   taskNotificationsEnabled, toggleTaskNotifications } from './core.js';
 import { openAppModal, openLogs, openConsoleLog, openConfirm } from './overlays.js';
 import { configuredPort } from './ports.js';
+import { initUiPrefs, syncPrefsControls } from './prefs.js';
 
 const FEED_CAP = 50;
 let feedSeq = 0;
@@ -83,6 +84,7 @@ export function initWidgets() {
     applyTheme();
     syncSettings();
   });
+  initUiPrefs();
 
   $('#feedClearL').addEventListener('click', clearFeed);
   $('#feedClearS').addEventListener('click', clearFeed);
@@ -420,6 +422,7 @@ function syncSettings() {
   for (const tab of $('#setAppearance').querySelectorAll('.mini-tab')) {
     tab.classList.toggle('active', tab.dataset.appearance === mode);
   }
+  syncPrefsControls();
   const d = state.data || {};
   setText($('#setVersion'), d.version ? 'v' + d.version : '—');
   setText($('#setPort'), d.consolePort ? ':' + d.consolePort : '—');
